@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #0a0a0a;
+    color: #f5f5f5;
+    font-family: 'Jost', sans-serif;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer components {
+  .gold-text {
+    color: #d4af37;
+  }
+
+  .gold-gradient-text {
+    background: linear-gradient(135deg, #d4af37 0%, #e8cc6a 50%, #a88a1f 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .btn-gold {
+    @apply relative overflow-hidden px-8 py-3 font-body font-medium tracking-widest uppercase text-sm transition-all duration-300;
+    background: linear-gradient(135deg, #d4af37 0%, #e8cc6a 50%, #a88a1f 100%);
+    color: #0a0a0a;
+  }
+
+  .btn-gold::after {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-300;
+    background: linear-gradient(135deg, #e8cc6a 0%, #d4af37 50%, #c9a42a 100%);
+  }
+
+  .btn-gold:hover::after {
+    @apply opacity-100;
+  }
+
+  .btn-gold span {
+    @apply relative z-10;
+  }
+
+  .btn-outline-gold {
+    @apply relative px-8 py-3 font-body font-medium tracking-widest uppercase text-sm text-gold border border-gold transition-all duration-300;
+  }
+
+  .btn-outline-gold:hover {
+    @apply bg-gold;
+    color: #0a0a0a;
+  }
+
+  .section-title {
+    @apply font-display text-5xl md:text-6xl font-light text-gray-100 leading-tight;
+  }
+
+  .gold-underline {
+    @apply relative inline-block;
+  }
+
+  .gold-underline::after {
+    content: '';
+    @apply absolute bottom-0 left-0 h-px w-full;
+    background: linear-gradient(90deg, transparent, #d4af37, transparent);
+  }
+}
+
+@layer utilities {
+  .text-shadow-gold {
+    text-shadow: 0 0 40px rgba(212, 175, 55, 0.3);
+  }
+
+  .card-glow {
+    box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.2), 0 20px 60px rgba(0, 0, 0, 0.8);
+  }
+
+  .card-glow-hover {
+    box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.6), 0 0 40px rgba(212, 175, 55, 0.15), 0 20px 60px rgba(0, 0, 0, 0.9);
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+::-webkit-scrollbar-thumb {
+  background: #d4af37;
+  border-radius: 2px;
+}
+
+/* Selection */
+::selection {
+  background: rgba(212, 175, 55, 0.3);
+  color: #f5f5f5;
+}
