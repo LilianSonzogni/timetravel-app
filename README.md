@@ -6,7 +6,7 @@ Webapp premium pour une agence de voyage temporel fictive, développée dans le 
 
 ## Description
 
-TimeTravel Agency est une single-page application React conçue comme support de présentation d'une campagne marketing générée entièrement par IA (Session 1). Elle met en valeur trois destinations temporelles — Paris 1889, Crétacé −65M ans, Florence 1504 — avec un design dark mode premium, des animations fluides et un chatbot IA intégré.
+TimeTravel Agency est une single-page application React conçue comme support de présentation d'une campagne marketing générée entièrement par IA (Session 1). Elle met en valeur trois destinations temporelles — Paris 1889, Crétacé −65M ans, Florence 1504 — avec un design dark mode premium, des animations fluides et un chatbot IA intégré dont **la clé API ne quitte jamais le serveur**.
 
 ---
 
@@ -18,7 +18,25 @@ TimeTravel Agency est une single-page application React conçue comme support de
 | Vite | 8 | Bundler & dev server |
 | Tailwind CSS | 3 | Styling utilitaire |
 | Framer Motion | 12 | Animations & transitions |
-| Mistral AI API | mistral-small | Chatbot conversationnel |
+| Vercel Serverless Functions | Node.js | Proxy sécurisé vers Mistral AI |
+| Mistral AI API | mistral-small | Moteur du chatbot |
+
+---
+
+## Architecture sécurisée du chatbot
+
+```
+Navigateur                Vercel Edge              Mistral AI
+──────────                ─────────────            ──────────
+ChatBot.jsx  ──POST──▶  api/chat.js  ──POST──▶  api.mistral.ai
+             /api/chat   (server)     + clé API
+             (pas de clé)  ▲
+                           │
+                    process.env.MISTRAL_API_KEY
+                    (variable serveur, jamais dans le bundle)
+```
+
+La **clé API** et le **system prompt** résident exclusivement dans `api/chat.js` côté serveur. Le bundle JavaScript client ne contient aucune credential. Vérifiable via `grep -r "MISTRAL" dist/`.
 
 ---
 
@@ -33,7 +51,7 @@ TimeTravel Agency est une single-page application React conçue comme support de
   - Hover effects : zoom image, border or, shimmer
 - **Galerie vidéo** — lazy loading via `IntersectionObserver` (src injecté uniquement à l'entrée dans le viewport), play/pause, barre de progression
 - **À propos** — présentation agence + 3 points forts avec icônes SVG
-- **Chatbot IA** — widget flottant Mistral AI avec historique de conversation, typing indicator, reset et badge non-lu
+- **Chatbot IA sécurisé** — widget flottant, appel serveur via `/api/chat`, historique de conversation, typing indicator, reset, badge non-lu
 - **Responsive** mobile-first, scroll personnalisé, sélection dorée
 
 ---
@@ -52,8 +70,8 @@ TimeTravel Agency est une single-page application React conçue comme support de
 
 | Outil | Usage |
 |---|---|
-| **Claude Code** (Anthropic) | Génération complète de la webapp : architecture React, composants, intégration assets, chatbot, configuration déploiement |
-| **Mistral AI** (`mistral-small`) | Moteur du chatbot conversationnel intégré dans l'interface |
+| **Claude Code** (Anthropic) | Génération complète de la webapp : architecture React, composants, intégration assets, chatbot sécurisé, configuration déploiement |
+| **Mistral AI** (`mistral-small`) | Moteur du chatbot conversationnel, appelé exclusivement côté serveur |
 
 ---
 
@@ -61,7 +79,7 @@ TimeTravel Agency est une single-page application React conçue comme support de
 
 ### Prérequis
 
-- Node.js ≥ 18
+- Node.js ≥ 20.6 (requis pour `--env-file` dans `npm run dev:api`)
 - npm ≥ 9
 
 ### Étapes
@@ -76,19 +94,18 @@ npm install
 
 # 3. Configurer la clé API Mistral
 cp .env.local.example .env.local
-# Éditer .env.local et renseigner VITE_MISTRAL_API_KEY
+# Éditer .env.local — renseigner MISTRAL_API_KEY (sans préfixe VITE_)
 # Clé disponible sur : https://console.mistral.ai/
 
 # 4. Lancer en développement
-npm run dev
-# → http://localhost:5173
+npm run dev        # Terminal 1 — Vite sur http://localhost:5173
+npm run dev:api    # Terminal 2 — Serveur API local sur http://localhost:3001
 
 # 5. Build de production
 npm run build
 
 # 6. Prévisualiser le build
-npm run preview
-# → http://localhost:4173
+npm run preview    # → http://localhost:4173
 ```
 
 ### Variables d'environnement
@@ -96,14 +113,43 @@ npm run preview
 Créer un fichier `.env.local` à la racine :
 
 ```
-VITE_MISTRAL_API_KEY=votre_clé_api_mistral
+# Côté serveur uniquement — jamais de préfixe VITE_
+MISTRAL_API_KEY=votre_clé_api_mistral
 ```
 
-| Variable | Description | Requis |
+| Variable | Scope | Description |
 |---|---|---|
-| `VITE_MISTRAL_API_KEY` | Clé API Mistral AI | Oui (chatbot) |
+| `MISTRAL_API_KEY` | Serveur uniquement | Clé API Mistral AI — **jamais exposée au client** |
 
-Le chatbot affiche un message d'erreur explicite si la clé est absente — le reste du site fonctionne normalement sans elle.
+Le reste du site fonctionne normalement sans la clé (le chatbot retourne un message d'erreur explicite).
+
+---
+
+## Développement local avec le chatbot
+
+Le chatbot appelle `/api/chat` — une Vercel Serverless Function. En local, Vite ne sert pas ce type de fichier. Deux terminaux sont nécessaires :
+
+```bash
+# Terminal 1 : frontend Vite
+npm run dev
+# → http://localhost:5173
+
+# Terminal 2 : serveur API local (scripts/local-api.js)
+npm run dev:api
+# → http://localhost:3001
+# → Les requêtes /api/chat depuis Vite sont automatiquement proxiées
+```
+
+Le proxy est configuré dans `vite.config.js` :
+```js
+server: { proxy: { '/api': 'http://localhost:3001' } }
+```
+
+**Alternative — Vercel CLI :**
+```bash
+npm i -g vercel
+vercel dev   # Sert frontend + fonctions /api sur le même port
+```
 
 ---
 
@@ -115,15 +161,18 @@ npm i -g vercel
 vercel
 
 # Option B — Interface vercel.com
-# 1. Importer le repo
+# 1. Importer le repo GitHub
 # 2. Framework : Vite (détecté automatiquement)
-# 3. Ajouter la variable VITE_MISTRAL_API_KEY dans les settings
+# 3. Settings → Environment Variables → ajouter MISTRAL_API_KEY
 # 4. Deploy
 ```
 
+**Important** : sur Vercel, la variable s'appelle `MISTRAL_API_KEY` (sans préfixe `VITE_`). Elle est automatiquement injectée dans `process.env` côté serveur et n'apparaît jamais dans le bundle client.
+
 Le fichier `vercel.json` configure automatiquement :
 - Cache immutable 1 an sur les images WebP
-- Cache 7 jours sur les vidéos avec support `Accept-Ranges` (streaming byte-range)
+- Cache 7 jours + `Accept-Ranges` sur les vidéos (streaming)
+- Routing automatique `/api/*` → fonctions serverless
 
 ---
 
@@ -131,27 +180,32 @@ Le fichier `vercel.json` configure automatiquement :
 
 ```
 timetravel-app/
+├── api/
+│   └── chat.js              # Serverless Function — clé + system prompt côté serveur
+├── scripts/
+│   └── local-api.js         # Serveur HTTP local pour dev (0 dépendance extra)
 ├── public/
 │   └── assets/
-│       ├── images/              # 9 images WebP (paris, cretace, florence × 3 formats)
-│       └── videos/              # 3 vidéos MP4 (paris, cretace, florence)
+│       ├── images/           # 9 images WebP (paris, cretace, florence × 3 formats)
+│       └── videos/           # 3 vidéos MP4 (paris, cretace, florence)
 ├── src/
 │   ├── components/
-│   │   ├── Header.jsx           # Navigation fixe + hamburger mobile
-│   │   ├── Hero.jsx             # Vidéo plein écran + titre animé
-│   │   ├── Destinations.jsx     # Données + layout section destinations
+│   │   ├── Header.jsx        # Navigation fixe + hamburger mobile
+│   │   ├── Hero.jsx          # Vidéo plein écran + titre animé
+│   │   ├── Destinations.jsx  # Données + layout section destinations
 │   │   ├── DestinationCard.jsx  # Card avec <picture> responsive + lazy
-│   │   ├── VideoGallery.jsx     # Galerie vidéo IntersectionObserver
-│   │   ├── About.jsx            # Présentation agence + 3 features
-│   │   ├── Footer.jsx           # Pied de page + liens
-│   │   └── ChatBot.jsx          # Widget chatbot Mistral AI
+│   │   ├── VideoGallery.jsx  # Galerie vidéo IntersectionObserver
+│   │   ├── About.jsx         # Présentation agence + 3 features
+│   │   ├── Footer.jsx        # Pied de page + liens
+│   │   └── ChatBot.jsx       # Widget chatbot — appel /api/chat uniquement
 │   ├── App.jsx
 │   ├── main.jsx
-│   └── index.css                # Tailwind + utilitaires gold custom
-├── vercel.json                  # Headers cache + config build
-├── vite.config.js               # Code splitting + target ES2020
-├── tailwind.config.js           # Palette dark/gold + polices display
-└── .env.local                   # Variables d'environnement (non commité)
+│   └── index.css             # Tailwind + utilitaires gold custom
+├── vercel.json               # Headers cache + routing serverless
+├── vite.config.js            # Proxy /api + code splitting + ES2020
+├── tailwind.config.js        # Palette dark/gold + polices display
+├── .env.local                # Variables d'environnement (non commité)
+└── .env.local.example        # Template à copier
 ```
 
 ---
@@ -164,7 +218,7 @@ timetravel-app/
 
 Assets visuels générés par Google Gemini (Imagen 3 / Veo 2) — Session 1.  
 Interface développée avec Claude Code (Anthropic) — Session 2.  
-Chatbot propulsé par Mistral AI (`mistral-small`).
+Chatbot propulsé par Mistral AI (`mistral-small`), appelé exclusivement côté serveur.
 
 ---
 

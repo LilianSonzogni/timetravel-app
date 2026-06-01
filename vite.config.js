@@ -22,6 +22,14 @@ export default defineConfig({
     target: 'es2020',
   },
 
+  // Proxy /api/* to the local API server (scripts/local-api.js on port 3001)
+  // This mirrors Vercel's routing in production without needing vercel dev.
+  server: {
+    proxy: {
+      '/api': 'http://localhost:3001',
+    },
+  },
+
   // Allow Vite preview to serve on the network (useful for local testing before deploy)
   preview: {
     host: true,

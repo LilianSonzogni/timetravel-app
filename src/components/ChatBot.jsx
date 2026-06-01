@@ -1,29 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-const SYSTEM_PROMPT = `Tu es l'assistant virtuel de TimeTravel Agency, une agence de voyage temporel de luxe.
-
-Ton rôle : conseiller les clients sur les meilleures destinations temporelles.
-
-Ton ton :
-- Professionnel mais chaleureux
-- Passionné d'histoire
-- Toujours enthousiaste sans être trop familier
-- Expertise en voyage temporel (fictif mais crédible)
-
-Tu connais parfaitement :
-- Paris 1889 : Belle Époque, Tour Eiffel en construction, Exposition Universelle, mode victorienne, atmosphère romantique
-- Crétacé -65M : T-Rex, Tricératops, végétation préhistorique, climat chaud et humide, derniers jours des dinosaures
-- Florence 1504 : Renaissance, Michel-Ange sculpte le David, Duomo, Ponte Vecchio, art et architecture, lumière toscane
-
-Tu peux suggérer des destinations selon les intérêts du client (art, nature, aventure, culture, histoire).
-
-Prix fictifs :
-- Paris 1889 : 12 000 euros (1 semaine)
-- Crétacé -65M : 25 000 euros (3 jours, expédition)
-- Florence 1504 : 15 000 euros (10 jours)
-
-Réponds toujours en français, de manière concise (3-4 phrases max par réponse).`
+// La clé API et le system prompt sont exclusivement côté serveur (api/chat.js).
+// Ce composant n'a aucune connaissance des credentials Mistral.
 
 const WELCOME_MESSAGE = {
   id: 'welcome',
@@ -70,14 +49,11 @@ function MessageBubble({ message }) {
       transition={{ duration: 0.3, ease: 'easeOut' }}
       className={`flex items-end gap-2 ${isUser ? 'flex-row-reverse' : 'flex-row'} max-w-full`}
     >
-      {/* Avatar */}
       {!isUser && (
         <div className="w-7 h-7 flex-shrink-0 flex items-center justify-center border border-gold/40 bg-dark">
           <span className="text-gold text-xs font-display">T</span>
         </div>
       )}
-
-      {/* Bubble */}
       <div
         className={`max-w-[78%] px-4 py-3 text-sm font-body font-light leading-relaxed ${
           isUser
@@ -128,14 +104,11 @@ export default function ChatBot() {
   const [hasUnread, setHasUnread] = useState(false)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
-  const apiKey = import.meta.env.VITE_MISTRAL_API_KEY
 
-  // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isTyping])
 
-  // Focus input when chat opens
   useEffect(() => {
     if (isOpen) {
       setHasUnread(false)
@@ -154,53 +127,42 @@ export default function ChatBot() {
     setMessages(updatedMessages)
     setIsTyping(true)
 
-    // Build API history (exclude the welcome message id, keep its content)
-    const apiHistory = updatedMessages.map(({ role, content }) => ({ role, content }))
+    // Strip internal `id` field — the API only needs role + content
+    const apiMessages = updatedMessages.map(({ role, content }) => ({ role, content }))
 
     try {
-      if (!apiKey || apiKey === 'your_mistral_api_key_here') {
-        throw new Error('NO_KEY')
-      }
-
-      const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'mistral-small',
-          messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...apiHistory],
-          max_tokens: 300,
-          temperature: 0.7,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: apiMessages }),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        const err = await response.json().catch(() => ({}))
-        throw new Error(err?.message || `HTTP ${response.status}`)
+        throw new Error(data?.error ?? `HTTP ${response.status}`)
       }
 
-      const data = await response.json()
-      const botContent = data.choices?.[0]?.message?.content ?? "Je n'ai pas pu obtenir de réponse. Veuillez réessayer."
-
-      const botMsg = { id: Date.now() + 1, role: 'assistant', content: botContent }
+      const botMsg = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: data.content ?? "Je n'ai pas pu obtenir de réponse. Veuillez réessayer.",
+      }
       setMessages((prev) => [...prev, botMsg])
       if (!isOpen) setHasUnread(true)
     } catch (err) {
-      const errorContent =
-        err.message === 'NO_KEY'
-          ? "⚙️ Clé API manquante — ajoutez VITE_MISTRAL_API_KEY dans .env.local pour activer le chatbot."
-          : "Une erreur est survenue. Vérifiez votre connexion ou votre clé API et réessayez."
-
       setMessages((prev) => [
         ...prev,
-        { id: Date.now() + 1, role: 'assistant', content: errorContent },
+        {
+          id: Date.now() + 1,
+          role: 'assistant',
+          content: `Une erreur est survenue : ${err.message}. Vérifiez que le serveur local tourne (npm run dev:api).`,
+        },
       ])
     } finally {
       setIsTyping(false)
     }
-  }, [input, isTyping, messages, apiKey, isOpen])
+  }, [input, isTyping, messages, isOpen])
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -353,7 +315,6 @@ export default function ChatBot() {
           )}
         </AnimatePresence>
 
-        {/* Unread badge */}
         <AnimatePresence>
           {hasUnread && !isOpen && (
             <motion.span
