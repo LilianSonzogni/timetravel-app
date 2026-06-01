@@ -212,7 +212,7 @@ timetravel-app/
 
 ## Crédits
 
-**Auteurs** : Lilian Sonzogni & Hugo Gomes Duarte 
+**Auteurs** : Lilian Sonzogni & Hugo Gomes Duarte  
 **Formation** : Master Expert Développement Full Stack — Ynov Bordeaux  
 **Promotion** : 2025–2026
 
