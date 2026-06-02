@@ -44,6 +44,48 @@ export const destinations = [
     description:
       "Côtoyez les plus grands artistes de la Renaissance. Admirez le Duomo sous la lumière toscane et plongez dans l'âge d'or de l'art et de l'architecture.",
   },
+  {
+    id: 'egypte',
+    title: 'Égypte Antique — 2560 av. J.-C.',
+    subtitle: "L'Âge des Pharaons",
+    era: 'Antiquité',
+    images: {
+      '16-9': '/assets/images/egypte_16-9',
+      '1-1':  '/assets/images/egypte_1-1',
+      '9-16': '/assets/images/egypte_9-16',
+    },
+    video: '/assets/videos/egypte.mp4',
+    description:
+      "Assistez à la construction de la Grande Pyramide de Gizeh. Naviguez sur le Nil et découvrez la splendeur monumentale de l'Égypte des pharaons, entre sable doré et ciel azur.",
+  },
+  {
+    id: 'kyoto',
+    title: 'Kyoto 1700 — Période Edo',
+    subtitle: 'Le Japon Traditionnel',
+    era: 'Époque Edo',
+    images: {
+      '16-9': '/assets/images/kyoto_16-9',
+      '1-1':  '/assets/images/kyoto_1-1',
+      '9-16': '/assets/images/kyoto_9-16',
+    },
+    video: '/assets/videos/kyoto.mp4',
+    description:
+      "Plongez dans la sérénité du Japon traditionnel. Contemplez les cerisiers en fleurs, les temples ancestraux et l'élégance raffinée des geishas dans un jardin zen intemporel.",
+  },
+  {
+    id: 'rome',
+    title: 'Rome Antique — 80 ap. J.-C.',
+    subtitle: "L'Empire Romain",
+    era: 'Antiquité Romaine',
+    images: {
+      '16-9': '/assets/images/rome_16-9',
+      '1-1':  '/assets/images/rome_1-1',
+      '9-16': '/assets/images/rome_9-16',
+    },
+    video: '/assets/videos/rome.mp4',
+    description:
+      "Vivez l'inauguration du Colisée au cœur de l'Empire romain. Mêlez-vous à la foule en toge, admirez les marbres impériaux et ressentez la grandeur de la Rome éternelle.",
+  },
 ]
 
 export default function Destinations() {
@@ -89,7 +131,7 @@ export default function Destinations() {
           transition={{ duration: 0.7, delay: 0.4 }}
           className="font-body font-light text-gray-400 mt-6 max-w-xl mx-auto text-base leading-relaxed"
         >
-          Trois époques soigneusement sélectionnées pour leur richesse historique et leurs expériences inoubliables.
+          Six époques soigneusement sélectionnées pour leur richesse historique et leurs expériences inoubliables.
         </motion.p>
       </div>
 

@@ -10,8 +10,9 @@ dist-ssr
 .env.local
 .env.*.local
 
-# Large source assets — WebP versions are committed instead
+# Large source assets — WebP/mp4 versions are committed instead
 public/assets/images/*.png
+public/assets/videos/*.mov
 
 # Logs
 logs
