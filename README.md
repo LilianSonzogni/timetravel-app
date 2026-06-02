@@ -6,7 +6,7 @@ Webapp premium pour une agence de voyage temporel fictive, développée dans le 
 
 ## Description
 
-TimeTravel Agency est une single-page application React conçue comme support de présentation d'une campagne marketing générée entièrement par IA (Session 1). Elle met en valeur trois destinations temporelles — Paris 1889, Crétacé −65M ans, Florence 1504 — avec un design dark mode premium, des animations fluides et un chatbot IA intégré dont **la clé API ne quitte jamais le serveur**.
+TimeTravel Agency est une single-page application React conçue comme support de présentation d'une campagne marketing générée entièrement par IA (Session 1). Elle met en valeur **six destinations temporelles** avec un design dark mode premium, des animations fluides, un **quiz de recommandation personnalisée** et un chatbot IA intégré dont **la clé API ne quitte jamais le serveur**.
 
 ---
 
@@ -19,7 +19,7 @@ TimeTravel Agency est une single-page application React conçue comme support de
 | Tailwind CSS | 3 | Styling utilitaire |
 | Framer Motion | 12 | Animations & transitions |
 | Vercel Serverless Functions | Node.js | Proxy sécurisé vers Mistral AI |
-| Mistral AI API | mistral-small | Moteur du chatbot |
+| Mistral AI API | mistral-small | Chatbot + enrichissement quiz |
 
 ---
 
@@ -29,14 +29,14 @@ TimeTravel Agency est une single-page application React conçue comme support de
 Navigateur                Vercel Edge              Mistral AI
 ──────────                ─────────────            ──────────
 ChatBot.jsx  ──POST──▶  api/chat.js  ──POST──▶  api.mistral.ai
-             /api/chat   (server)     + clé API
-             (pas de clé)  ▲
-                           │
+Quiz.jsx                 (server)     + clé API
+             /api/chat      ▲
+             (pas de clé)   │
                     process.env.MISTRAL_API_KEY
                     (variable serveur, jamais dans le bundle)
 ```
 
-La **clé API** et le **system prompt** résident exclusivement dans `api/chat.js` côté serveur. Le bundle JavaScript client ne contient aucune credential. Vérifiable via `grep -r "MISTRAL" dist/`.
+La **clé API** et le **system prompt** résident exclusivement dans `api/chat.js` côté serveur. Le bundle JavaScript client ne contient aucune credential. Vérifiable via `grep -r "MISTRAL" dist/` → aucun résultat.
 
 ---
 
@@ -44,12 +44,17 @@ La **clé API** et le **system prompt** résident exclusivement dans `api/chat.j
 
 - **Header fixe** avec navigation smooth-scroll, backdrop blur au défilement et menu hamburger mobile
 - **Hero section** avec vidéo Paris en fond, titre animé et scroll indicator
-- **Destinations** — 3 cards interactives avec :
+- **Destinations** — 6 cards interactives (2 lignes × 3 colonnes desktop) avec :
   - Images responsive via `<picture>` : portrait 9:16 (mobile), carré 1:1 (tablette), paysage 16:9 (desktop)
-  - Format WebP prioritaire (−95% de poids vs PNG)
+  - Format WebP prioritaire (−92 à 95 % de poids vs PNG)
   - `loading="lazy"` + `decoding="async"` natifs
   - Hover effects : zoom image, border or, shimmer
 - **Galerie vidéo** — lazy loading via `IntersectionObserver` (src injecté uniquement à l'entrée dans le viewport), play/pause, barre de progression
+- **Quiz de recommandation personnalisée** — architecture hybride :
+  - 4 questions couvrant les 6 destinations (chacune peut gagner)
+  - Scoring local instantané et fiable (matrice de pondération)
+  - Enrichissement IA optionnel via `/api/chat` (Mistral) avec timeout 10 s et fallback gracieux vers descriptions statiques pré-rédigées
+  - Résultat : image 16:9 de la destination + explication personnalisée + CTA scroll vers la carte
 - **À propos** — présentation agence + 3 points forts avec icônes SVG
 - **Chatbot IA sécurisé** — widget flottant, appel serveur via `/api/chat`, historique de conversation, typing indicator, reset, badge non-lu
 - **Responsive** mobile-first, scroll personnalisé, sélection dorée
@@ -62,7 +67,7 @@ La **clé API** et le **system prompt** résident exclusivement dans `api/chat.j
 
 | Outil | Usage |
 |---|---|
-| **Google Gemini Premium** (Imagen 3 + Veo 2) | Génération des 9 images (3 destinations × 3 formats) et des 3 vidéos animées (8s chacune) avec mouvements de caméra |
+| **Google Gemini Premium** (Imagen 3 + Veo 2) | Génération des 18 images (6 destinations × 3 formats) et des 6 vidéos animées (8–10 s chacune) avec mouvements de caméra |
 | **ElevenLabs** | Génération de la voix-off française (18 secondes) |
 | **CapCut** | Montage du teaser final (19 secondes) |
 
@@ -70,8 +75,8 @@ La **clé API** et le **system prompt** résident exclusivement dans `api/chat.j
 
 | Outil | Usage |
 |---|---|
-| **Claude Code** (Anthropic) | Génération complète de la webapp : architecture React, composants, intégration assets, chatbot sécurisé, configuration déploiement |
-| **Mistral AI** (`mistral-small`) | Moteur du chatbot conversationnel, appelé exclusivement côté serveur |
+| **Claude Code** (Anthropic) | Génération complète de la webapp : architecture React, composants, intégration assets, quiz, chatbot sécurisé, configuration déploiement |
+| **Mistral AI** (`mistral-small`) | Moteur du chatbot conversationnel et enrichissement IA du quiz, appelés exclusivement côté serveur |
 
 ---
 
@@ -97,7 +102,7 @@ cp .env.local.example .env.local
 # Éditer .env.local — renseigner MISTRAL_API_KEY (sans préfixe VITE_)
 # Clé disponible sur : https://console.mistral.ai/
 
-# 4. Lancer en développement
+# 4. Lancer en développement (2 terminaux)
 npm run dev        # Terminal 1 — Vite sur http://localhost:5173
 npm run dev:api    # Terminal 2 — Serveur API local sur http://localhost:3001
 
@@ -121,13 +126,13 @@ MISTRAL_API_KEY=votre_clé_api_mistral
 |---|---|---|
 | `MISTRAL_API_KEY` | Serveur uniquement | Clé API Mistral AI — **jamais exposée au client** |
 
-Le reste du site fonctionne normalement sans la clé (le chatbot retourne un message d'erreur explicite).
+Le reste du site fonctionne normalement sans la clé (chatbot et quiz affichent un message d'erreur ou utilisent les descriptions statiques de fallback).
 
 ---
 
-## Développement local avec le chatbot
+## Développement local avec le chatbot et le quiz
 
-Le chatbot appelle `/api/chat` — une Vercel Serverless Function. En local, Vite ne sert pas ce type de fichier. Deux terminaux sont nécessaires :
+Le chatbot et le quiz appellent `/api/chat` — une Vercel Serverless Function. En local, Vite ne sert pas ce type de fichier. **Deux terminaux sont nécessaires** :
 
 ```bash
 # Terminal 1 : frontend Vite
@@ -186,15 +191,16 @@ timetravel-app/
 │   └── local-api.js         # Serveur HTTP local pour dev (0 dépendance extra)
 ├── public/
 │   └── assets/
-│       ├── images/           # 9 images WebP (paris, cretace, florence × 3 formats)
-│       └── videos/           # 3 vidéos MP4 (paris, cretace, florence)
+│       ├── images/           # 18 images WebP (6 destinations × 3 formats)
+│       └── videos/           # 6 vidéos MP4 (paris, cretace, florence, egypte, kyoto, rome)
 ├── src/
 │   ├── components/
 │   │   ├── Header.jsx        # Navigation fixe + hamburger mobile
 │   │   ├── Hero.jsx          # Vidéo plein écran + titre animé
-│   │   ├── Destinations.jsx  # Données + layout section destinations
+│   │   ├── Destinations.jsx  # Données destinations + layout section (6 cards)
 │   │   ├── DestinationCard.jsx  # Card avec <picture> responsive + lazy
-│   │   ├── VideoGallery.jsx  # Galerie vidéo IntersectionObserver
+│   │   ├── VideoGallery.jsx  # Galerie vidéo IntersectionObserver (6 vidéos)
+│   │   ├── Quiz.jsx          # Quiz recommandation : scoring local + enrichissement IA
 │   │   ├── About.jsx         # Présentation agence + 3 features
 │   │   ├── Footer.jsx        # Pied de page + liens
 │   │   └── ChatBot.jsx       # Widget chatbot — appel /api/chat uniquement
@@ -210,6 +216,19 @@ timetravel-app/
 
 ---
 
+## Destinations
+
+| Destination | Époque | Prix | Durée |
+|---|---|---|---|
+| Paris 1889 — Belle Époque | XIXe siècle | 12 000 € | 1 semaine |
+| Crétacé — 65 M d'années | Mésozoïque | 25 000 € | 3 jours |
+| Florence 1504 — Renaissance | XVIe siècle | 15 000 € | 10 jours |
+| Égypte Antique — 2560 av. J.-C. | Antiquité | 18 000 € | 8 jours |
+| Kyoto 1700 — Période Edo | Époque Edo | 16 000 € | 7 jours |
+| Rome Antique — 80 ap. J.-C. | Antiquité Romaine | 17 000 € | 6 jours |
+
+---
+
 ## Crédits
 
 **Auteurs** : Lilian Sonzogni & Hugo Gomes Duarte  
@@ -218,7 +237,7 @@ timetravel-app/
 
 Assets visuels générés par Google Gemini (Imagen 3 / Veo 2) — Session 1.  
 Interface développée avec Claude Code (Anthropic) — Session 2.  
-Chatbot propulsé par Mistral AI (`mistral-small`), appelé exclusivement côté serveur.
+Chatbot et enrichissement quiz propulsés par Mistral AI (`mistral-small`), appelés exclusivement côté serveur.
 
 ---
 
