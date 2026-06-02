@@ -35,6 +35,7 @@ export default function DestinationCard({ destination, index }) {
 
   return (
     <motion.article
+      id={`dest-${destination.id}`}
       initial={{ opacity: 0, y: 60 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-80px' }}
